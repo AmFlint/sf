@@ -82,6 +82,7 @@ class CatController extends FOSRestController
             throw new BadRequestHttpException($violations);
         }
 
+        $this->catRepository->save($cat);
 
         return $cat->getExportableAttributes();
     }

@@ -4,6 +4,7 @@ namespace App\Repository;
 
 use App\Entity\Mood;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
+use Doctrine\ORM\EntityNotFoundException;
 use Symfony\Bridge\Doctrine\RegistryInterface;
 
 /**
@@ -21,7 +22,13 @@ class MoodRepository extends ServiceEntityRepository
 
     public function getMoodByName(string $moodName)
     {
+        if(empty($moodName)) {
+            throw new EntityNotFoundException();
+        }
 
+        return $this->findOneBy(
+            array('moodName' => $moodName)
+        );
     }
 
 //    /**

@@ -4,6 +4,7 @@ namespace App\Repository;
 
 use App\Entity\Color;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
+use Doctrine\ORM\EntityNotFoundException;
 use Symfony\Bridge\Doctrine\RegistryInterface;
 
 /**
@@ -21,7 +22,13 @@ class ColorRepository extends ServiceEntityRepository
 
     public function getByName(string $colorName)
     {
+        if(empty($colorName)) {
+            throw new EntityNotFoundException();
+        }
 
+        return $this->findOneBy(
+          array('colorName' => $colorName)
+        );
     }
 
 //    /**

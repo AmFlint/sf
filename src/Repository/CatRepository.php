@@ -3,6 +3,7 @@
 namespace App\Repository;
 
 use App\Entity\Cat;
+use App\Entity\Food;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Symfony\Bridge\Doctrine\RegistryInterface;
 
@@ -21,7 +22,13 @@ class CatRepository extends ServiceEntityRepository
 
     public function save(Cat $cat)
     {
+       $em = $this->getEntityManager();
 
+       $em->persist($cat->getColor());
+       $em->persist($cat->getMood());
+
+       $em->persist($cat);
+       $em->flush();
     }
 
 //    /**
