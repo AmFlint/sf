@@ -4,9 +4,11 @@ namespace App\Controller;
 
 use App\Entity\Cat;
 use App\Repository\CatRepository;
+use Doctrine\ORM\ORMException;
 use FOS\RestBundle\Controller\FOSRestController;
 use FOS\RestBundle\View\View;
 use Sensio\Bundle\FrameworkExtraBundle\Configuration\ParamConverter;
+use Symfony\Component\CssSelector\Exception\InternalErrorException;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use FOS\RestBundle\Controller\Annotations as Rest;
@@ -69,6 +71,7 @@ class CatController extends FOSRestController
     }
 
     /**
+     * Route to create a Cat resource in Database
      * @Rest\Post("/cat")
      * @Rest\View(StatusCode = 201)
      * @ParamConverter("cat", converter="fos_rest.request_body")
@@ -84,6 +87,39 @@ class CatController extends FOSRestController
 
         $this->catRepository->save($cat);
 
+        return $cat->getExportableAttributes();
+    }
+
+    /**
+     * Delete a cat resource from database
+     * @Rest\Delete("/cat/{catId}")
+     * @Rest\View(StatusCode = 200)
+     * @param int $catId
+     * @throws InternalErrorException
+     * @throws NotFoundHttpException
+     * @return array
+     */
+    public function delete(int $catId)
+    {
+        $cat = $this->catRepository->find($catId);
+        // Cat not found
+        if (empty($cat)) {
+            throw new NotFoundHttpException('Cat Not found');
+        }
+
+        // Try to remove cat and get Found cat entity
+        try {
+            $cat = $this->catRepository->findByIdAndDelete($catId);
+        } catch (ORMException $e) { // In case can't access database
+            throw new InternalErrorException();
+        }
+
+        // If cat was not found, throw not found exception
+        if (empty($cat)) {
+            throw new NotFoundHttpException('Cat not found');
+        }
+
+        // Cat found and deleted properly, return attributes of deleted entity
         return $cat->getExportableAttributes();
     }
 }

@@ -3,88 +3,123 @@
 namespace App\Controller;
 
 use App\Entity\Food;
-use App\Form\FoodType;
 use App\Repository\FoodRepository;
-use Symfony\Bundle\FrameworkBundle\Controller\Controller;
-use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\Routing\Annotation\Route;
+use Doctrine\ORM\ORMException;
+use FOS\RestBundle\Controller\FOSRestController;
+use Sensio\Bundle\FrameworkExtraBundle\Configuration\ParamConverter;
+use Symfony\Component\CssSelector\Exception\InternalErrorException;
+use FOS\RestBundle\Controller\Annotations as Rest;
+use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+use Symfony\Component\Validator\ConstraintViolationList;
 
-/**
- * @Route("/food")
- */
-class FoodController extends Controller
+class FoodController extends FOSRestController
 {
     /**
-     * @Route("/", name="food_index", methods="GET")
+     * @var FoodRepository - Access/Manage food resource in DB
      */
-    public function index(FoodRepository $foodRepository): Response
+    private $foodRepository;
+
+    /**
+     * FoodController constructor.
+     * @param FoodRepository $foodRepository
+     */
+    public function __construct(FoodRepository $foodRepository)
     {
-        return $this->render('food/index.html.twig', ['foods' => $foodRepository->findAll()]);
+        $this->foodRepository = $foodRepository;
     }
 
     /**
-     * @Route("/new", name="food_new", methods="GET|POST")
+     * List food entities from database
+     * @Rest\Get("/food")
+     * @Rest\View(StatusCode = 200)
      */
-    public function new(Request $request): Response
+    public function index(): array
     {
-        $food = new Food();
-        $form = $this->createForm(FoodType::class, $food);
-        $form->handleRequest($request);
+        $foodEntities = $this->foodRepository->findAll();
+        $exportFood = [];
 
-        if ($form->isSubmitted() && $form->isValid()) {
-            $em = $this->getDoctrine()->getManager();
-            $em->persist($food);
-            $em->flush();
-
-            return $this->redirectToRoute('food_index');
+        foreach ($foodEntities as $foodEntity) {
+            $exportFood[] = $foodEntity->getExportableAttributes();
         }
 
-        return $this->render('food/new.html.twig', [
-            'food' => $food,
-            'form' => $form->createView(),
-        ]);
+        return $exportFood;
     }
 
     /**
-     * @Route("/{id}", name="food_show", methods="GET")
+     * @Rest\Get("/food/{foodId}")
+     * @Rest\View(StatusCode = 200)
+     * @param int $foodId
+     * @return array
      */
-    public function show(Food $food): Response
+    public function details(int $foodId): array
     {
-        return $this->render('food/show.html.twig', ['food' => $food]);
-    }
+        $food = $this->foodRepository->find($foodId);
 
-    /**
-     * @Route("/{id}/edit", name="food_edit", methods="GET|POST")
-     */
-    public function edit(Request $request, Food $food): Response
-    {
-        $form = $this->createForm(FoodType::class, $food);
-        $form->handleRequest($request);
-
-        if ($form->isSubmitted() && $form->isValid()) {
-            $this->getDoctrine()->getManager()->flush();
-
-            return $this->redirectToRoute('food_edit', ['id' => $food->getId()]);
+        if (empty($food)) {
+            throw new NotFoundHttpException('Food not found');
         }
 
-        return $this->render('food/edit.html.twig', [
-            'food' => $food,
-            'form' => $form->createView(),
-        ]);
+        return $food->getExportableAttributes();
     }
 
     /**
-     * @Route("/{id}", name="food_delete", methods="DELETE")
+     * @Rest\Delete("/food/{foodId}")
+     * @Rest\View(StatusCode = 200)
+     * @param int $foodId
+     * @return array
+     * @throws InternalErrorException
+     * @throws NotFoundHttpException
      */
-    public function delete(Request $request, Food $food): Response
+    public function delete(int $foodId): array
     {
-        if ($this->isCsrfTokenValid('delete'.$food->getId(), $request->request->get('_token'))) {
-            $em = $this->getDoctrine()->getManager();
-            $em->remove($food);
-            $em->flush();
+        try {
+            $food = $this->foodRepository->findByIdAndDelete($foodId);
+        } catch (ORMException $e) {
+            throw new InternalErrorException('Error while connecting to Database');
         }
 
-        return $this->redirectToRoute('food_index');
+        if (empty($food)) {
+            throw new NotFoundHttpException('Food Not found');
+        }
+
+        return $food->getExportableAttributes();
+    }
+
+    /**
+     * @Rest\Post("/food")
+     * @Rest\View(StatusCode = 201)
+     * @param Food $food
+     * @param ConstraintViolationList $violations
+     * @return array
+     * @ParamConverter("food", converter="fos_rest.request_body")
+     * @throws InternalErrorException
+     */
+    public function create(Food $food, ConstraintViolationList $violations): array
+    {
+        if (count($violations)) {
+            throw new BadRequestHttpException($violations);
+        }
+
+        try {
+            $exportFood = $this->foodRepository->save($food);
+        } catch (ORMException $exception) {
+            throw new InternalErrorException('Error while connecting to database');
+        }
+
+        return $exportFood->getExportableAttributes();
+    }
+
+    /**
+     * @Rest\Patch("/food/{foodId}")
+     * @Rest\View(StatusCode = 200)
+     * @ParamConverter("food", converter="fos_rest.request_body")
+     * @param Food $food
+     * @return array
+     */
+    public function update(Food $food): array
+    {
+
+        return $food->getExportableAttributes();
     }
 }
