@@ -3,88 +3,94 @@
 namespace App\Controller;
 
 use App\Entity\Color;
-use App\Form\ColorType;
 use App\Repository\ColorRepository;
-use Symfony\Bundle\FrameworkBundle\Controller\Controller;
-use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\HttpFoundation\Response;
+use FOS\RestBundle\Controller\FOSRestController;
+use Sensio\Bundle\FrameworkExtraBundle\Configuration\ParamConverter;
+use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Routing\Annotation\Route;
+use FOS\RestBundle\Controller\Annotations as Rest;
+use Symfony\Component\Validator\ConstraintViolationList;
 
-/**
- * @Route("/color")
- */
-class ColorController extends Controller
+class ColorController extends FOSRestController
 {
-    /**
-     * @Route("/", name="color_index", methods="GET")
-     */
-    public function index(ColorRepository $colorRepository): Response
+    private $colorRepository;
+
+    public function __construct(ColorRepository $colorRepository)
     {
-        return $this->render('color/index.html.twig', ['colors' => $colorRepository->findAll()]);
+        $this->colorRepository = $colorRepository;
     }
 
     /**
-     * @Route("/new", name="color_new", methods="GET|POST")
+     * @Rest\Get("/colors")
+     * @Rest\View(StatusCode = 200)
+     * @return array
      */
-    public function new(Request $request): Response
+    public function index(): array
     {
-        $color = new Color();
-        $form = $this->createForm(ColorType::class, $color);
-        $form->handleRequest($request);
+        $colors = $this->colorRepository->findAll();
+        $exportColors = [];
 
-        if ($form->isSubmitted() && $form->isValid()) {
-            $em = $this->getDoctrine()->getManager();
-            $em->persist($color);
-            $em->flush();
-
-            return $this->redirectToRoute('color_index');
+        foreach ($colors as $color) {
+            $exportColors[] = $color->getExportableAttributes();
         }
 
-        return $this->render('color/new.html.twig', [
-            'color' => $color,
-            'form' => $form->createView(),
-        ]);
+        return $exportColors;
     }
 
     /**
-     * @Route("/{id}", name="color_show", methods="GET")
+     * @Rest\Get("/colors/{colorId}")
+     * @Rest\View(StatusCode = 200)
+     * @param int $colorId
+     * @return array
      */
-    public function show(Color $color): Response
+    public function details(int $colorId): array
     {
-        return $this->render('color/show.html.twig', ['color' => $color]);
-    }
+        $color = $this->colorRepository->find($colorId);
 
-    /**
-     * @Route("/{id}/edit", name="color_edit", methods="GET|POST")
-     */
-    public function edit(Request $request, Color $color): Response
-    {
-        $form = $this->createForm(ColorType::class, $color);
-        $form->handleRequest($request);
-
-        if ($form->isSubmitted() && $form->isValid()) {
-            $this->getDoctrine()->getManager()->flush();
-
-            return $this->redirectToRoute('color_edit', ['id' => $color->getId()]);
+        if (empty($color)) {
+            throw new NotFoundHttpException('Color not found');
         }
 
-        return $this->render('color/edit.html.twig', [
-            'color' => $color,
-            'form' => $form->createView(),
-        ]);
+        return $color->getExportableAttributes();
     }
 
     /**
-     * @Route("/{id}", name="color_delete", methods="DELETE")
+     * @Rest\Delete("/colors/{colorId}")
+     * @Rest\View(StatusCode = 200)
+     * @param int $colorId
+     * @return array
      */
-    public function delete(Request $request, Color $color): Response
+    public function delete(int $colorId): array
     {
-        if ($this->isCsrfTokenValid('delete'.$color->getId(), $request->request->get('_token'))) {
-            $em = $this->getDoctrine()->getManager();
-            $em->remove($color);
-            $em->flush();
+
+    }
+
+    /**
+     * @Rest\Patch("/colors/{colorId}")
+     * @Rest\View(StatusCode = 200)
+     * @return array
+     */
+    public function update(): array
+    {
+
+    }
+
+    /**
+     * @Rest\Post("/colors")
+     * @Rest\View(StatusCode = 201)
+     * @ParamConverter("color", converter="fos_rest.request_body")
+     * @param Color $color
+     * @param ConstraintViolationList $violations
+     * @return array
+     */
+    public function create(Color $color, ConstraintViolationList $violations): array
+    {
+        if (count($violations)) {
+            throw new BadRequestHttpException($violations);
         }
 
-        return $this->redirectToRoute('color_index');
+
+        return $color->getExportableAttributes();
     }
 }

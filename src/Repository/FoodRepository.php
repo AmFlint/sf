@@ -24,6 +24,47 @@ class FoodRepository extends ServiceEntityRepository
 
     }
 
+    /**
+     * @param int $foodId
+     * @return Food|null
+     * @throws \Doctrine\ORM\ORMException
+     */
+    public function findByIdAndDelete(int $foodId)
+    {
+        $food = $this->find($foodId);
+        // Not found
+        if (empty($food)) {
+            return null;
+        }
+
+        $em = $this->getEntityManager();
+        $em->remove($food);
+        $em->flush();
+
+        return $food;
+    }
+
+    /**
+     * @param Food $food
+     * @return Food|null
+     * @throws \Doctrine\ORM\ORMException
+     * @throws \Doctrine\ORM\OptimisticLockException
+     */
+    public function save(Food $food)
+    {
+        $em = $this->getEntityManager();
+        // Check if food already exists
+        $foodExists = $this->count(['name' => $food->getName()]);
+        // If food already exists, return found entity
+        if ($foodExists) {
+            return $this->findOneBy(['name' => $food->getName()]);
+        }
+        // else, save new food entity and return it
+        $em->persist($food);
+        $em->flush();
+        return $food;
+    }
+
 //    /**
 //     * @return Food[] Returns an array of Food objects
 //     */

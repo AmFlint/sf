@@ -20,6 +20,7 @@ class Food
 
     /**
      * @ORM\Column(type="string", length=50)
+     * @Assert\NotBlank
      */
     private $name;
 
@@ -76,5 +77,24 @@ class Food
         }
 
         return $this;
+    }
+
+    /**
+     * Get Exportable attributes
+     * @param bool $withCats - if true, return all cats associated to this food
+     * @return array
+     */
+    public function getExportableAttributes(bool $withCats = false)
+    {
+        $att = [
+            'food_id' => $this->getId(),
+            'name' => $this->getName()
+        ];
+
+        if ($withCats) {
+            $att['cats'] = $this->getCats();
+        }
+
+        return $att;
     }
 }

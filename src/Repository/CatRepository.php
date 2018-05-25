@@ -4,7 +4,10 @@ namespace App\Repository;
 
 use App\Entity\Cat;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
+use Doctrine\ORM\ORMException;
 use Symfony\Bridge\Doctrine\RegistryInterface;
+use Symfony\Component\CssSelector\Exception\InternalErrorException;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /**
  * @method Cat|null find($id, $lockMode = null, $lockVersion = null)
@@ -22,6 +25,24 @@ class CatRepository extends ServiceEntityRepository
     public function save(Cat $cat)
     {
 
+    }
+
+    /**
+     * @param int $catId
+     * @throws ORMException
+     * @throws NotFoundHttpException
+     * @return null|Cat
+     */
+    public function findByIdAndDelete(int $catId)
+    {
+        $cat = $this->find($catId);
+        // Not found
+        if (empty($cat)) {
+            return null;
+        }
+
+        $this->getEntityManager()->remove($cat);
+        return $cat;
     }
 
 //    /**
