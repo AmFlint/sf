@@ -5,86 +5,46 @@ namespace App\Controller;
 use App\Entity\Mood;
 use App\Form\MoodType;
 use App\Repository\MoodRepository;
+use FOS\RestBundle\Controller\FOSRestController;
+use FOS\RestBundle\Controller\Annotations as Rest;
+use FOS\RestBundle\View\View;
 use Symfony\Bundle\FrameworkBundle\Controller\Controller;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
 
-/**
- * @Route("/mood")
- */
-class MoodController extends Controller
+class MoodController extends FOSRestController
 {
-    /**
-     * @Route("/", name="mood_index", methods="GET")
-     */
-    public function index(MoodRepository $moodRepository): Response
+    private $moodRepotory;
+
+
+    public function __construct(MoodRepository $moodRepository)
     {
-        return $this->render('mood/index.html.twig', ['moods' => $moodRepository->findAll()]);
+        $this->moodRepotory = $moodRepository;
     }
 
     /**
-     * @Route("/new", name="mood_new", methods="GET|POST")
+     * @Rest\Get("/mood")
+     * @Rest\View(StatusCode = 200)
      */
-    public function new(Request $request): Response
+    public function list()
     {
-        $mood = new Mood();
-        $form = $this->createForm(MoodType::class, $mood);
-        $form->handleRequest($request);
+        $moods = $this->moodRepotory->findAll();
 
-        if ($form->isSubmitted() && $form->isValid()) {
-            $em = $this->getDoctrine()->getManager();
-            $em->persist($mood);
-            $em->flush();
+        $exportableMoods = [];
 
-            return $this->redirectToRoute('mood_index');
+        foreach ($moods as $mood) {
+           $exportableMoods =  $mood->getExportableAttributes();
         }
 
-        return $this->render('mood/new.html.twig', [
-            'mood' => $mood,
-            'form' => $form->createView(),
-        ]);
+        return $exportableMoods;
     }
 
     /**
-     * @Route("/{id}", name="mood_show", methods="GET")
+     * @param $moodId
      */
-    public function show(Mood $mood): Response
-    {
-        return $this->render('mood/show.html.twig', ['mood' => $mood]);
+    public function findById($moodId) {
+
     }
 
-    /**
-     * @Route("/{id}/edit", name="mood_edit", methods="GET|POST")
-     */
-    public function edit(Request $request, Mood $mood): Response
-    {
-        $form = $this->createForm(MoodType::class, $mood);
-        $form->handleRequest($request);
-
-        if ($form->isSubmitted() && $form->isValid()) {
-            $this->getDoctrine()->getManager()->flush();
-
-            return $this->redirectToRoute('mood_edit', ['id' => $mood->getId()]);
-        }
-
-        return $this->render('mood/edit.html.twig', [
-            'mood' => $mood,
-            'form' => $form->createView(),
-        ]);
-    }
-
-    /**
-     * @Route("/{id}", name="mood_delete", methods="DELETE")
-     */
-    public function delete(Request $request, Mood $mood): Response
-    {
-        if ($this->isCsrfTokenValid('delete'.$mood->getId(), $request->request->get('_token'))) {
-            $em = $this->getDoctrine()->getManager();
-            $em->remove($mood);
-            $em->flush();
-        }
-
-        return $this->redirectToRoute('mood_index');
-    }
 }
